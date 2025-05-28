@@ -27,6 +27,13 @@ static unsigned long millis() {
 
 #ifdef LIBRETINY
 #include <Arduino.h>
+// LibreTiny does not support IDF - disable code that expects it to be available
+#define ESP_IDF_VERSION_MAJOR (0)
+// xTaskCreatePinnedToCore is not available, force single-core operation
+#define CONFIG_FREERTOS_UNICORE 1
+// ESP watchdog is not available
+#undef CONFIG_ASYNC_TCP_USE_WDT
+#define CONFIG_ASYNC_TCP_USE_WDT 0
 #endif
 
 extern "C" {
@@ -868,6 +875,7 @@ bool AsyncClient::connect(const IPAddress &ip, uint16_t port) {
   ip_addr_t addr;
 #if ESP_IDF_VERSION_MAJOR < 5
 #if LWIP_IPV4 && LWIP_IPV6
+  // if both IPv4 and IPv6 are enabled, ip_addr_t has a union field and the address type
   addr.u_addr.ip4.addr = ip;
   addr.type = IPADDR_TYPE_V4;
 #else
