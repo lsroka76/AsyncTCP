@@ -7,10 +7,10 @@
 #include "AsyncTCPVersion.h"
 #define ASYNCTCP_FORK_ESP32Async
 
-#ifdef ESP32
-#include <esp_idf_version.h>
-#else
+#ifdef LIBRETINY
 #define ESP_IDF_VERSION_MAJOR (0)
+#else
+#include <esp_idf_version.h>
 #endif
 
 #ifdef ARDUINO

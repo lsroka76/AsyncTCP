@@ -3,7 +3,7 @@
 
 #include "AsyncTCP.h"
 
-#ifdef ESP32
+#ifndef LIBRETINY
 #include <esp_log.h>
 
 #ifdef ARDUINO
