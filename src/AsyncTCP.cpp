@@ -1548,7 +1548,7 @@ AsyncServer::AsyncServer(uint16_t port) : _port(port), _noDelay(false), _pcb(0),
   _addr.type = IPADDR_TYPE_ANY;
   _addr.u_addr.ip4.addr = INADDR_ANY;
 #else
-  _addr.addr = IPADDR_TYPE_ANY;
+  _addr.addr = INADDR_ANY;
 #endif
 }
 
@@ -1576,7 +1576,7 @@ void AsyncServer::begin() {
 #if LWIP_IPV4 && LWIP_IPV6
     _pcb = tcp_new_ip_type(_addr.type);
 #else
-    _pcb = tcp_new_ip_type(IPADDR_TYPE_V4);
+    _pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
 #endif
   }
   if (!_pcb) {
