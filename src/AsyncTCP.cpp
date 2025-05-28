@@ -3,6 +3,7 @@
 
 #include "AsyncTCP.h"
 
+#ifdef ESP32
 #include <esp_log.h>
 
 #ifdef ARDUINO
@@ -21,6 +22,11 @@
 static unsigned long millis() {
   return (unsigned long)(esp_timer_get_time() / 1000ULL);
 }
+#endif
+#endif
+
+#ifdef LIBRETINY
+#include <Arduino.h>
 #endif
 
 extern "C" {

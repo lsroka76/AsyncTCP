@@ -7,7 +7,11 @@
 #include "AsyncTCPVersion.h"
 #define ASYNCTCP_FORK_ESP32Async
 
+#ifdef ESP32
 #include <esp_idf_version.h>
+#else
+#define ESP_IDF_VERSION_MAJOR (0)
+#endif
 
 #ifdef ARDUINO
 #include "IPAddress.h"
@@ -29,9 +33,11 @@ extern "C" {
 #else
 extern "C" {
 #include <lwip/pbuf.h>
+#include <FreeRTOS.h>
 #include <semphr.h>
 }
 #define CONFIG_ASYNC_TCP_RUNNING_CORE -1  // any available core
+#define CONFIG_FREERTOS_UNICORE 1
 #endif
 
 // If core is not defined, then we are running in Arduino or PIO
