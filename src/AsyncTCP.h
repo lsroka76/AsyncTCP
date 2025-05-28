@@ -34,7 +34,6 @@ extern "C" {
 #include <FreeRTOS.h>
 #include <semphr.h>
 }
-#define CONFIG_ASYNC_TCP_RUNNING_CORE -1  // any available core
 #endif
 
 // If core is not defined, then we are running in Arduino or PIO
