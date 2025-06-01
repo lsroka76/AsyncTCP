@@ -37,6 +37,8 @@ static unsigned long millis() {
 #define CONFIG_ASYNC_TCP_USE_WDT 0
 #endif
 
+#include <assert.h>
+
 extern "C" {
 #include "lwip/dns.h"
 #include "lwip/err.h"
