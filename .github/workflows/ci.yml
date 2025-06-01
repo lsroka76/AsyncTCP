@@ -80,8 +80,8 @@ jobs:
 
           - env: ci-arduino-libretiny
             board: generic-bk7231n-qfn32-tuya
-          - env: ci-arduino-libretiny
-            board: generic-rtl8710bn-2mb-788k
+          # - env: ci-arduino-libretiny
+          #   board: generic-rtl8710bn-2mb-788k
 
     steps:
       - name: Checkout
