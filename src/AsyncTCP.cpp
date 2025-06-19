@@ -37,8 +37,6 @@ static unsigned long millis() {
 #define CONFIG_ASYNC_TCP_USE_WDT 0
 #endif
 
-#include <assert.h>
-
 extern "C" {
 #include "lwip/dns.h"
 #include "lwip/err.h"
@@ -197,13 +195,17 @@ static void _free_event(lwip_tcp_event_packet_t *evpkt) {
 }
 
 static inline void _send_async_event(lwip_tcp_event_packet_t *e) {
-  assert(e != nullptr);
+  if (e == nullptr) {
+    return;
+  }
   _async_queue.push_back(e);
   xTaskNotifyGive(_async_service_task_handle);
 }
 
 static inline void _prepend_async_event(lwip_tcp_event_packet_t *e) {
-  assert(e != nullptr);
+  if (e == nullptr) {
+    return;
+  }
   _async_queue.push_front(e);
   xTaskNotifyGive(_async_service_task_handle);
 }
@@ -902,7 +904,7 @@ void AsyncClient::close(bool now) {
 int8_t AsyncClient::abort() {
   if (_pcb) {
     _tcp_abort(&_pcb);
-    assert(_pcb == NULL);
+    // _pcb is now NULL
   }
   return ERR_ABRT;
 }
@@ -969,7 +971,7 @@ int8_t AsyncClient::_close() {
   int8_t err = ERR_OK;
   if (_pcb) {
     _tcp_close(&_pcb, this);
-    assert(_pcb == NULL);
+    // _pcb is now NULL
     if (_discard_cb) {
       _discard_cb(_discard_cb_arg, this);
     }
@@ -1494,7 +1496,6 @@ void AsyncServer::begin() {
 
   if (err != ERR_OK) {
     // pcb was closed by _tcp_bind
-    assert(_pcb == NULL);
     log_e("bind error: %d", err);
     return;
   }
