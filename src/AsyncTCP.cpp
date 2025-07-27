@@ -615,11 +615,17 @@ static esp_err_t _tcp_recved(tcp_pcb **pcb, size_t len) {
 }
 
 static err_t _tcp_close_api(struct tcpip_api_call_data *api_call_msg) {
+  // Unlike the other calls, this is not a direct wrapper of the LwIP function;
+  // we perform the AsyncClient teardown interlocked safely with the LwIP task.
+
+  // As a postcondition, the queue must not have any events referencing
+  // this AsyncClient.  This is because it is possible for an error event
+  // to have been queued, clearing the pcb*, but after the async thread
+  // has committed to closing/destructing the AsyncClient object.
+
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
   msg->err = ERR_CONN;
   if (*msg->pcb) {
-    // Unlike the other calls, this is not a direct wrapper of the LwIP function;
-    // we perform the AsyncClient teardown interlocked safely with the LwIP task.
     tcp_pcb *pcb = *msg->pcb;
     _reset_tcp_callbacks(pcb, msg->close);
     msg->err = tcp_close(pcb);
@@ -627,6 +633,9 @@ static err_t _tcp_close_api(struct tcpip_api_call_data *api_call_msg) {
       tcp_abort(pcb);
     }
     *msg->pcb = nullptr;  // PCB is now the property of LwIP
+  } else {
+    // Ensure there is not an error event queued for this client
+    _remove_events_for_client(msg->close);
   }
   return msg->err;
 }
