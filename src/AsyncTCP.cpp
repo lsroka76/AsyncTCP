@@ -619,19 +619,20 @@ static err_t _tcp_close_api(struct tcpip_api_call_data *api_call_msg) {
   // we perform the AsyncClient teardown interlocked safely with the LwIP task.
 
   // As a postcondition, the queue must not have any events referencing
-  // this AsyncClient.  This is because it is possible for an error event
-  // to have been queued, clearing the pcb*, but after the async thread
-  // has committed to closing/destructing the AsyncClient object.
+  // the AsyncClient in api_call_msg->close.  This is because it is possible for
+  // an error event to have been queued, clearing the pcb*, but after the async
+  // thread has committed to closing/destructing the AsyncClient object.
 
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
   msg->err = ERR_CONN;
   if (*msg->pcb) {
     tcp_pcb *pcb = *msg->pcb;
     _reset_tcp_callbacks(pcb, msg->close);
-    msg->err = tcp_close(pcb);
-    if (msg->err != ERR_OK) {
+    if (tcp_close(pcb) != ERR_OK) {
+      // We do not permit failure here: abandon the pcb anyways.
       tcp_abort(pcb);
     }
+    msg->err = ERR_OK;
     *msg->pcb = nullptr;  // PCB is now the property of LwIP
   } else {
     // Ensure there is not an error event queued for this client
@@ -641,9 +642,6 @@ static err_t _tcp_close_api(struct tcpip_api_call_data *api_call_msg) {
 }
 
 static esp_err_t _tcp_close(tcp_pcb **pcb, AsyncClient *client) {
-  if (!pcb || !*pcb) {
-    return ERR_CONN;
-  }
   tcp_api_call_t msg;
   msg.pcb = pcb;
   msg.close = client;
@@ -652,21 +650,29 @@ static esp_err_t _tcp_close(tcp_pcb **pcb, AsyncClient *client) {
 }
 
 static err_t _tcp_abort_api(struct tcpip_api_call_data *api_call_msg) {
+  // Like close(), we must ensure that the queue is cleared
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
   msg->err = ERR_CONN;
   if (*msg->pcb) {
-    tcp_abort(*msg->pcb);
+    tcp_pcb *pcb = *msg->pcb;
+    _reset_tcp_callbacks(pcb, msg->close);
+    tcp_abort(pcb);
     *msg->pcb = nullptr;  // PCB is now the property of LwIP
+    msg->err = ERR_OK;
+  } else {
+    // Ensure there is not an error event queued for this client
+    _remove_events_for_client(msg->close);
   }
   return msg->err;
 }
 
-static esp_err_t _tcp_abort(tcp_pcb **pcb) {
+static esp_err_t _tcp_abort(tcp_pcb **pcb, AsyncClient *client) {
   if (!pcb || !*pcb) {
     return ERR_CONN;
   }
   tcp_api_call_t msg;
   msg.pcb = pcb;
+  msg.close = client;
   tcpip_api_call(_tcp_abort_api, (struct tcpip_api_call_data *)&msg);
   return msg.err;
 }
@@ -912,7 +918,7 @@ void AsyncClient::close(bool now) {
 
 int8_t AsyncClient::abort() {
   if (_pcb) {
-    _tcp_abort(&_pcb);
+    _tcp_abort(&_pcb, this);
     // _pcb is now NULL
   }
   return ERR_ABRT;
@@ -977,13 +983,11 @@ void AsyncClient::ackPacket(struct pbuf *pb) {
 
 int8_t AsyncClient::_close() {
   // ets_printf("X: 0x%08x\n", (uint32_t)this);
-  int8_t err = ERR_OK;
-  if (_pcb) {
-    _tcp_close(&_pcb, this);
-    // _pcb is now NULL
-    if (_discard_cb) {
-      _discard_cb(_discard_cb_arg, this);
-    }
+  int8_t err = _tcp_close(&_pcb, this);
+  // _pcb is now NULL
+  if ((err == ERR_OK) && _discard_cb) {
+    // _pcb was closed here
+    _discard_cb(_discard_cb_arg, this);
   }
   return err;
 }
