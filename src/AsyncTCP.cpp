@@ -253,7 +253,7 @@ static inline lwip_tcp_event_packet_t *_get_async_event() {
   }
 }
 
-static void _remove_events_for_client(AsyncClient *client) {
+static size_t _remove_events_for_client(AsyncClient *client) {
   lwip_tcp_event_packet_t *removed_event_chain;
   {
     queue_mutex_guard guard;
@@ -269,6 +269,7 @@ static void _remove_events_for_client(AsyncClient *client) {
     removed_event_chain = t->next;
     _free_event(t);
   }
+  return count;
 };
 
 void AsyncTCP_detail::handle_async_event(lwip_tcp_event_packet_t *e) {
@@ -637,7 +638,9 @@ static err_t _tcp_close_api(struct tcpip_api_call_data *api_call_msg) {
     *msg->pcb = nullptr;  // PCB is now the property of LwIP
   } else {
     // Ensure there is not an error event queued for this client
-    _remove_events_for_client(msg->close);
+    if (_remove_events_for_client(msg->close)) {
+      msg->err = ERR_OK;  // dispose needs to be run
+    }
   }
   return msg->err;
 }
