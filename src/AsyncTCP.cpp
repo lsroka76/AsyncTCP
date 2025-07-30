@@ -484,7 +484,8 @@ void AsyncTCP_detail::tcp_error(void *arg, int8_t err) {
   // ets_printf("+E: 0x%08x\n", arg);
   AsyncClient *client = reinterpret_cast<AsyncClient *>(arg);
   if (client && client->_pcb) {
-    _reset_tcp_callbacks(client->_pcb, client);
+    // The pcb has already been freed by LwIP; do not attempt to clear the callbacks!
+    _remove_events_for_client(client);
     client->_pcb = nullptr;
   }
 
