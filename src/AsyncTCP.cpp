@@ -656,16 +656,12 @@ static esp_err_t _tcp_close(tcp_pcb **pcb, AsyncClient *client) {
 static err_t _tcp_abort_api(struct tcpip_api_call_data *api_call_msg) {
   // Like close(), we must ensure that the queue is cleared
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
-  msg->err = ERR_CONN;
   if (*msg->pcb) {
-    tcp_pcb *pcb = *msg->pcb;
-    _reset_tcp_callbacks(pcb, msg->close);
-    tcp_abort(pcb);
+    tcp_abort(*msg->pcb);
     *msg->pcb = nullptr;  // PCB is now the property of LwIP
-    msg->err = ERR_OK;
+    msg->err = ERR_ABRT;
   } else {
-    // Ensure there is not an error event queued for this client
-    _remove_events_for_client(msg->close);
+    msg->err = ERR_CONN;
   }
   return msg->err;
 }
@@ -921,11 +917,8 @@ void AsyncClient::close(bool now) {
 }
 
 int8_t AsyncClient::abort() {
-  if (_pcb) {
-    _tcp_abort(&_pcb, this);
-    // _pcb is now NULL
-  }
-  return ERR_ABRT;
+  return _tcp_abort(&_pcb, this);
+  // _pcb is now NULL
 }
 
 size_t AsyncClient::space() const {
